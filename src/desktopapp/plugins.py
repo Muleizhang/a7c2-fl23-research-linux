@@ -9,6 +9,8 @@ from .paths import ROOT, data_root, write_json
 
 
 def install(arguments):
+    if sys.platform == 'linux':
+        raise ValueError('Linux 没有原生 Lightroom Classic；不支持安装宿主插件。离线外观转换仍可使用。')
     from .exiftool import ensure,persist_windows
     tool = ensure(arguments.get('exiftool'))
     if sys.platform == 'win32':

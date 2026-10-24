@@ -6,12 +6,16 @@
 会话目录里仍然保留原来的 original/、candidate/、readback/、evidence/ 结构，
 这样 0.1.0–0.5.2 留下的记录依旧能被读懂。
 """
+import sys
 from datetime import datetime
 import json
 import re
 from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parent
+if sys.platform == 'linux' and getattr(sys, 'frozen', False):
+    from desktopapp.paths import data_root
+    SOURCE = data_root() / 'fl23-cli'
 WORKDIR = SOURCE / 'workdir'
 BACKUP = SOURCE / 'backup'
 

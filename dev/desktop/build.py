@@ -55,8 +55,15 @@ def make_windows_zip(output):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',type=Path,default=ROOT/'dist')
+    parser.add_argument('--appimagetool', default='appimagetool', help='Native Linux appimagetool executable')
+    parser.add_argument('--package-revision', default='1', help='Linux package revision for this application version')
+    parser.add_argument('--local-linux-build', action='store_true',
+                        help='Label local test packages and record newer host glibc requirements; not a baseline release')
     args=parser.parse_args()
-    if sys.platform not in ('win32','darwin'):raise RuntimeError('Build on native Windows or macOS')
+    if sys.platform not in ('win32','darwin','linux'):raise RuntimeError('Build on native Windows, macOS or Linux')
+    if sys.platform == 'linux':
+        from linux_packages import architecture
+        architecture()
     if sys.platform=='darwin' and platform.machine()!='arm64':
         raise RuntimeError('macOS packaging supports Apple Silicon only; Intel builds are not provided')
     output=args.output.resolve();output.mkdir(parents=True,exist_ok=True)
@@ -64,8 +71,14 @@ def main():
     subprocess.run([sys.executable,'-m','PyInstaller','--noconfirm',
                     '--distpath',str(output),'--workpath',str(ROOT/'build/desktop'),
                     str(ROOT/'dev/desktop/desktop.spec')],cwd=ROOT,check=True)
-    target=make_dmg(output) if sys.platform=='darwin' else make_windows_zip(output)
-    print(json.dumps(dict(artifact=str(target),bytes=target.stat().st_size,camera_io=False)))
+    if sys.platform == 'linux':
+        from linux_packages import build
+        targets = build(output, appimagetool=args.appimagetool, revision=args.package_revision,
+                        local=args.local_linux_build)
+    else:
+        targets = [make_dmg(output) if sys.platform=='darwin' else make_windows_zip(output)]
+    for target in targets:
+        print(json.dumps(dict(artifact=str(target),bytes=target.stat().st_size,camera_io=False)))
 
 
 if __name__=='__main__':main()

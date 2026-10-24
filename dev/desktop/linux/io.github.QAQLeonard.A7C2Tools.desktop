@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=A7C II Tools
+Comment=Sony A7C II camera tools
+Exec=A7C2Tools
+Icon=io.github.QAQLeonard.A7C2Tools
+Terminal=false
+Categories=Graphics;Photography;

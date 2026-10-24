@@ -7,6 +7,9 @@ sys.path.insert(0, str(ROOT / 'src'))
 
 
 def main():
+    if len(sys.argv) >= 2 and sys.argv[1] == '--cli':
+        from desktopapp.cli import main as cli
+        return cli(sys.argv[2:])
     if '--offline-self-test' in sys.argv:
         import json
         import runpy

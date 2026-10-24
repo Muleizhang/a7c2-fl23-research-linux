@@ -1,4 +1,6 @@
-PySide6-Essentials==6.8.3
+PySide6-Essentials==6.8.3; sys_platform != "linux" or platform_machine != "aarch64"
+# ARM64 6.8 wheels require glibc 2.39; keep Ubuntu 22.04/Debian 12 compatible.
+PySide6-Essentials==6.7.3; sys_platform == "linux" and platform_machine == "aarch64"
 numpy==2.2.6
 scipy==1.16.3
 Pillow==11.3.0

@@ -1,6 +1,8 @@
 """有界的索尼服务通道。所有 USB 访问都经 usbdev，驱动差异在那里处理。"""
 import struct
 import time
+import sys
+from pathlib import Path
 
 import core
 import usbdev
@@ -17,6 +19,10 @@ class Bounded(UsbBackend):
 
     def __init__(self, device, budget=180):
         super().__init__(device)
+        if sys.platform == 'linux':
+            sys.path.append(str(Path(__file__).resolve().parents[1] / 'camera_runtime'))
+            from linux_host import claim_camera_interface
+            claim_camera_interface(device)
         self.budget = budget
         self.reset()
 

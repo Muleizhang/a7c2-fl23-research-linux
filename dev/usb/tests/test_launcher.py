@@ -5,6 +5,7 @@ import io,json,os
 from pathlib import Path
 import shutil,subprocess,sys,tempfile,unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 ROOT=Path(__file__).resolve().parents[3]
 spec=importlib.util.spec_from_file_location('a7c2_launcher',ROOT/'src/launcher.py')
@@ -46,13 +47,13 @@ class LauncherTests(unittest.TestCase):
     def test_incomplete_environment_is_preserved(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);(root/'.venv').mkdir();sentinel=root/'.venv/keep';sentinel.write_text('original')
-            with patch.object(launcher,'ROOT',root),patch.object(launcher,'PYTHON',root/'.venv/Scripts/python.exe'),patch.object(launcher,'execute') as execute:
+            with patch.object(launcher, 'os', SimpleNamespace(name='nt')), patch.object(launcher,'ROOT',root),patch.object(launcher,'PYTHON',root/'.venv/Scripts/python.exe'),patch.object(launcher,'execute') as execute:
                 with self.assertRaisesRegex(RuntimeError,'incomplete'):launcher.prepare('looks')
             self.assertEqual(sentinel.read_text(),'original');execute.assert_not_called()
     def test_dependency_setup_failure_cannot_start_camera(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);python=root/'.venv/Scripts/python.exe';python.parent.mkdir(parents=True);python.touch()
-            with patch.object(launcher,'ROOT',root),patch.object(launcher,'PYTHON',python),patch.object(launcher,'execute',side_effect=[0,1,1]) as run,redirect_stdout(io.StringIO()):
+            with patch.object(launcher, 'os', SimpleNamespace(name='nt')), patch.object(launcher,'ROOT',root),patch.object(launcher,'PYTHON',python),patch.object(launcher,'execute',side_effect=[0,1,1]) as run,redirect_stdout(io.StringIO()):
                 with self.assertRaisesRegex(RuntimeError,'Dependency installation failed'):launcher.prepare('fl23')
             self.assertEqual(run.call_count,3)
             self.assertFalse(any('app.py' in str(arg) for call in run.call_args_list for arg in call.args[0]))

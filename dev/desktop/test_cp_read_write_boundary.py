@@ -77,3 +77,9 @@ def test_without_the_302_response_finish_the_field_512_short_write_reproduces():
     with pytest.raises(transport.GenericUsbException,match='expected_bytes=8216 actual_bytes=512'):
         value.cp_write(device.key,bytes([17])*8192)
     assert device.writes==0 and not value.healthy
+
+
+@pytest.fixture(autouse=True)
+def simulated_host_claim(monkeypatch):
+    import linux_host
+    monkeypatch.setattr(linux_host, "claim_camera_interface", lambda device: None)

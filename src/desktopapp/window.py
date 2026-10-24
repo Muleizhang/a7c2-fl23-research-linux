@@ -164,6 +164,9 @@ class Window(W.QMainWindow):
         self.setup_sound = W.QCheckBox('启用索尼原生电子快门声音'); self.setup_sound.setChecked(True)
         self.setup_vertical = W.QCheckBox('保存开启竖屏拍摄信息显示（重开后自动生效）'); self.setup_vertical.setChecked(True)
         self.setup_plugin = W.QCheckBox('安装 Lightroom 自动识别插件（需要 Lightroom）')
+        if sys.platform == 'linux':
+            self.setup_plugin.setText('Lightroom Classic 无原生 Linux 版')
+            self.setup_plugin.setEnabled(False)
         prior_path=Path(self.settings.get('setup_work',''),'setup.private.json')
         prior=json.loads(prior_path.read_text(encoding='utf-8')) if prior_path.is_file() else {}
         if prior and prior.get('phase')!='COMPLETE':
@@ -270,7 +273,7 @@ class Window(W.QMainWindow):
             self.setup_preset_summary.setText(presets.SUMMARY)
             self.setup_preset_summary.setEnabled(self.setup_presets.isChecked())
         for box in (self.setup_presets,self.setup_fl23,self.setup_sound,self.setup_vertical,self.setup_plugin):
-            box.setEnabled(not pending and self.process is None)
+            box.setEnabled(not pending and self.process is None and (box is not self.setup_plugin or sys.platform != 'linux'))
 
     def clear_installation_state(self, verified=True):
         # Clear active navigation/resume pointers, not diagnostic evidence or
@@ -380,7 +383,7 @@ class Window(W.QMainWindow):
         else:
             self.button(layout, '准备 USB 服务连接', 'usb_prepare', primary=True)
         self.button(layout, '单独安装所选身份的驱动（高级）' if sys.platform == 'win32'
-                    else '检查 USB 访问（macOS 无需 Zadig）', 'driver_install',
+                    else ('检查 USB 访问（Linux 权限）' if sys.platform == 'linux' else '检查 USB 访问（macOS 无需 Zadig）'), 'driver_install',
                     lambda: {'pid': ['0e8a', '0336'][self.driver_identity.currentIndex()]})
         if sys.platform == 'darwin':
             self.button(layout, '推出选中的相机存储卷', 'mac_unmount', lambda: {'volume': self.text('mac_volume')})
@@ -493,6 +496,8 @@ class Window(W.QMainWindow):
         tools=W.QHBoxLayout();layout.addLayout(tools)
         for title,callback in [('打开内置 DCP／A7Look 配对库',self.open_profile_library),('从 DCP／LUT 生成 A7Look…',self.compiler_dialog),('安装 LrC 自动识别插件…',self.plugin_dialog)]:
             button=W.QPushButton(title);button.clicked.connect(callback);tools.addWidget(button);self.buttons.append(button)
+            if sys.platform == 'linux' and callback == self.plugin_dialog:
+                button.setVisible(False)
         formats=W.QPushButton('LUT 格式说明：ST / sRGB，不是 S-Log3…')
         formats.clicked.connect(self.show_look_format_guide);layout.addWidget(formats);self.buttons.append(formats)
         layout.addWidget(W.QLabel('写入页选择 .a7look；.cube / .dcp 先用上方工具转换。仅更改清单内的槽位。'))
@@ -954,7 +959,7 @@ class Window(W.QMainWindow):
             self.status.setText('安装完成。可查看上次安装结果，无需再次刷写。')
             self.setup_button.setText('开始新的一键安装')
             self.setup_result_button.setVisible(True)
-            for box in (self.setup_presets,self.setup_fl23,self.setup_sound,self.setup_vertical,self.setup_plugin):box.setEnabled(True)
+            for box in (self.setup_presets,self.setup_fl23,self.setup_sound,self.setup_vertical,self.setup_plugin):box.setEnabled(box is not self.setup_plugin or sys.platform != 'linux')
             self.show_setup_result()
 
     def process_error(self, error):

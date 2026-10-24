@@ -13,6 +13,8 @@ def lua_string(value):
 
 
 def install(exiftool, *, root=None, modules=None, interval=5, copy_exiftool=True):
+    if sys.platform == 'linux':
+        raise ValueError('Lightroom Classic has no native Linux host; offline profile tools remain available')
     source=Path(__file__).resolve().parents[3]
     root=Path(root) if root else Path.home()/'.a7look/auto-profile'
     runtime=root/'runtime';(runtime/'src/looks/looktool').mkdir(parents=True,exist_ok=True)
