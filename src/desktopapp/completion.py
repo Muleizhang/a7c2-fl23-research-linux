@@ -14,6 +14,9 @@ def text(state):
     options=state.get('options',{})
     lines=['本次所选操作已完成，程序与设置核对通过。','请在机身检查预览、拍摄和回放。','',
         'FL2／FL3：'+('已启用' if options.get('fl23',True) else '本次未改动')]
+    lines[2:2] = ['验证记录：写入读回与重启加载核对已通过。',
+                  '用户功能验收：' + ('已记录用户确认；不代表每项效果均经过独立测试。' if state.get('physical_checks_accepted') else
+                  '尚未记录确认；请分别检查预览、照片／回放、元数据、原有 FL／FL2／FL3、声音和竖屏。')]
     looks=options.get('looks',[])
     if looks:
         lines.append('自定义外观：已写入')

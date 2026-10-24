@@ -33,7 +33,7 @@ Linux 无原生 Lightroom Classic 宿主，其原生宿主集成不在支持范�
 - 只做完成适配所需的最小完整修改，保持 Windows/macOS 行为，不顺带重构或引入无实际需要的框架。
 - 项目内使用 `.venv` 开发、测试和构建，沿用现有依赖管理方式，记录必要的 Linux 构建依赖。
 - 沿用现有打包结构，提供可重复执行的 Linux 构建入口，统一读取应用版本，避免多个位置手工维护版本号。
-- USB 使用仅针对相机 `054C:0E8A`、`054C:0336` 身份的 udev 规则，首次配置后以普通用户运行。权限和卸载存储的实现可因平台不同，但操作结果及错误处理应与上游一致。
+- USB 使用仅针对相机 `054C:0E8A`、`054C:0336` 身份的 udev 规则，首次显式连接时自动配置，必要时由系统弹窗授权，无需用户手工执行命令；配置后以普通用户运行。权限和卸载存储的实现可因平台不同，但操作结果及错误处理应与上游一致。
 - 系统级修改需要明确授权；AI 代理遇到 `sudo` 必须报告命令和原因，由用户执行，不得执行或提权。未经明确授权不使用其他代理。
 
 ### 相机安全与数据
@@ -93,7 +93,7 @@ Linux has no native Lightroom Classic host, so native host integration is exclud
 - Make the smallest complete adaptation, preserve Windows/macOS behavior, and avoid unrelated refactoring or speculative frameworks.
 - Use a project-local `.venv` for development, testing and builds. Follow existing dependency management and document necessary Linux build dependencies.
 - Extend the existing packaging structure with repeatable Linux build entry points and a shared application version source, avoiding manual version edits in multiple places.
-- Restrict USB udev rules to camera identities `054C:0E8A` and `054C:0336`, allowing ordinary-user operation after initial setup. Permission and storage-unmount implementations may differ by platform, but outcomes and error handling must match upstream.
+- Restrict USB udev rules to camera identities `054C:0E8A` and `054C:0336`, automatically configuring access on the first explicit connection, with system authorization when required and no manual commands; subsequent camera operations run as the ordinary user. Permission and storage-unmount implementations may differ by platform, but outcomes and error handling must match upstream.
 - System-wide changes require explicit authorization. AI agents must report any required `sudo` command and its reason for the user to execute; agents must not execute or escalate it. Do not use additional agents without explicit authorization.
 
 ### Camera safety and data

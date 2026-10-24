@@ -149,3 +149,121 @@ def test_cli_help_outside_source_tree(tmp_path, tool):
                             cwd=tmp_path, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stderr
     assert 'usage:' in result.stdout
+
+
+def permission_device(monkeypatch, tmp_path, *, configured=False, allowed=False):
+    rule = tmp_path / '70-a7c2-tools.rules'
+    if configured:
+        rule.write_text(linux_host.USB_RULES)
+    monkeypatch.setattr(linux_host, 'RULE_PATH', rule)
+    monkeypatch.setattr(linux_host, 'camera_path', lambda _: Path('/camera'))
+    monkeypatch.setattr(linux_host.os, 'access', lambda *_: allowed)
+    monkeypatch.setattr(Path, 'is_file', lambda path: path == Path('/usr/bin/pkexec') or path == rule and configured)
+    return SimpleNamespace(bus=1, address=2)
+
+
+def test_existing_usb_configuration_never_elevates(monkeypatch, tmp_path):
+    device = permission_device(monkeypatch, tmp_path, configured=True, allowed=True)
+    monkeypatch.setattr(linux_host.subprocess, 'run', lambda *_a, **_k: pytest.fail('no authorization needed'))
+    linux_host.ensure_usb_permissions(device)
+
+
+def test_usb_setup_fixed_scope_and_loader_environment(monkeypatch, tmp_path):
+    device = permission_device(monkeypatch, tmp_path)
+    monkeypatch.setenv('LD_LIBRARY_PATH', '/untrusted/frozen')
+    monkeypatch.setenv('BASH_ENV', '/untrusted/script')
+    calls = []
+    def authorize(command, **kwargs):
+        calls.append(command)
+        assert command == ['/usr/bin/pkexec', '/bin/sh', '-c', linux_host.PERMISSION_SETUP]
+        assert 'LD_LIBRARY_PATH' not in kwargs['env']
+        assert 'BASH_ENV' not in kwargs['env']
+        monkeypatch.setattr(linux_host.os, 'access', lambda *_: True)
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(linux_host.subprocess, 'run', authorize)
+    linux_host.ensure_usb_permissions(device)
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize('failure', ['cancelled', 'timeout', 'no_access', 'changed'])
+def test_usb_authorization_failures_stop_without_retry(monkeypatch, tmp_path, failure):
+    device = permission_device(monkeypatch, tmp_path)
+    calls = []
+    def authorize(command, **kwargs):
+        calls.append(command)
+        if failure == 'timeout':
+            raise subprocess.TimeoutExpired(command, 120)
+        if failure == 'changed':
+            monkeypatch.setattr(linux_host, 'camera_path', lambda _: Path('/other'))
+        return SimpleNamespace(returncode=126 if failure == 'cancelled' else 0, stderr='cancelled')
+    monkeypatch.setattr(linux_host.subprocess, 'run', authorize)
+    with pytest.raises(PermissionError):
+        linux_host.ensure_usb_permissions(device)
+    assert len(calls) == 1
+
+
+def test_permission_script_matches_packaged_rules_and_parses():
+    assert linux_host.USB_RULES == (linux_packages.ASSETS / '70-a7c2-tools.rules').read_text()
+    script = linux_host.PERMISSION_SETUP
+    assert '--attr-match=idVendor=054c' in script
+    assert 'for product in 0e8a 0336' in script
+    assert 'sudo' not in script and 'MODE=' not in script
+    # Syntax check only: do not run the privileged helper on this host.
+    subprocess.run(['/bin/sh', '-n'], input=script, text=True, check=True)
+
+
+def test_transport_permission_failure_precedes_descriptor_access(monkeypatch):
+    from looktool.devicesession import modules
+    transport, _ = modules()
+    monkeypatch.setattr(sys, 'platform', 'linux')
+    class Device:
+        def __iter__(self):
+            pytest.fail('must not read configuration before permissions')
+    device = Device()
+    monkeypatch.setattr(transport.usb.backend.libusb1, 'get_backend', lambda **_: object())
+    monkeypatch.setattr(transport.usb.core, 'find', lambda **_: [device])
+    def denied(found):
+        assert found is device
+        raise PermissionError('cancelled')
+    monkeypatch.setattr(linux_host, 'ensure_usb_permissions', denied)
+    with pytest.raises(PermissionError, match='cancelled'):
+        transport.get_device(0x0e8a)
+
+
+def test_missing_polkit_stops_before_starting_a_helper(monkeypatch, tmp_path):
+    device = permission_device(monkeypatch, tmp_path)
+    monkeypatch.setattr(Path, 'is_file', lambda _: False)
+    monkeypatch.setattr(linux_host.subprocess, 'run', lambda *_a, **_k: pytest.fail('no helper available'))
+    with pytest.raises(PermissionError, match='polkit'):
+        linux_host.ensure_usb_permissions(device)
+
+
+def test_permission_script_installs_rules_and_triggers_only_camera_ids(tmp_path):
+    # Run in a disposable directory with a fake udevadm, never system rules/udev.
+    import os
+    import stat
+    folder = tmp_path / 'rules'
+    folder.mkdir()
+    untouched = tmp_path / 'unrelated'
+    untouched.write_text('keep')
+    target = folder / '70-a7c2-tools.rules'
+    target.symlink_to(untouched)
+    commands = tmp_path / 'commands'
+    commands.mkdir()
+    log = tmp_path / 'udev.log'
+    helper = commands / 'udevadm'
+    helper.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$TEST_UDEV_LOG"\n')
+    helper.chmod(0o755)
+    script = linux_host.PERMISSION_SETUP.replace('/etc/udev/rules.d', str(folder)).replace(
+        'PATH=/usr/sbin:/usr/bin:/sbin:/bin', f'PATH={commands}:/usr/sbin:/usr/bin:/sbin:/bin')
+    subprocess.run(['/bin/sh', '-c', script], env=dict(os.environ, TEST_UDEV_LOG=str(log)), check=True)
+    assert not target.is_symlink()
+    assert target.read_text() == linux_host.USB_RULES
+    assert stat.S_IMODE(target.stat().st_mode) == 0o644
+    assert untouched.read_text() == 'keep'
+    assert log.read_text().splitlines() == [
+        'control --reload-rules',
+        'trigger --action=change --subsystem-match=usb --attr-match=idVendor=054c --attr-match=idProduct=0e8a',
+        'trigger --action=change --subsystem-match=usb --attr-match=idVendor=054c --attr-match=idProduct=0336',
+        'settle --timeout=10',
+    ]

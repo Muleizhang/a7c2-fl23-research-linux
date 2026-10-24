@@ -21,7 +21,9 @@ class Bounded(UsbBackend):
         super().__init__(device)
         if sys.platform == 'linux':
             sys.path.append(str(Path(__file__).resolve().parents[1] / 'camera_runtime'))
-            from linux_host import claim_camera_interface
+            from linux_host import claim_camera_interface, ensure_usb_permissions
+            if device.idProduct == 0x0e8a:
+                ensure_usb_permissions(device)
             claim_camera_interface(device)
         self.budget = budget
         self.reset()

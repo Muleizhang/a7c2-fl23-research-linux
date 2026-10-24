@@ -310,6 +310,8 @@ class Window(W.QMainWindow):
     def show_reload_guide(self, *, setup=False, mode=None):
         title = ('恢复尚未开始，请断电后重试' if mode=='factory_prewrite_temporary' else
                  '恢复尚未完成，请重启后核对' if mode=='factory_reset' else
+                 '名称资源已准备，请断电后继续安装' if mode=='resource_reload' else
+                 '安装写入已完成，请断电后核对加载' if setup else
                  '试听结果已记录，请断电恢复原声' if mode=='sound_confirm' else '读写已结束，请断电重开')
         W.QMessageBox.information(self, title, reloadguide.text(setup=setup, mode=mode))
 
@@ -908,7 +910,7 @@ class Window(W.QMainWindow):
                              '批量外观写入完成，已完整读回；按弹窗统一断电重开即可加载。' if status.get('action')=='direct_looks_import' else
                              'FL23 操作完成，写入与完整读回均已结束。重开相机后生效，无需再点核对。' if
                              status.get('result',{}).get('mode') in ('fl23_enable','fl23_disable') else
-                             '读写已结束。拔 USB → 等灯停 → 关机并等灯灭 → 取电池至少 1 分钟 → 开机 → 接回 USB → 点击首页“继续安装”。详见弹窗。' if setup_wait else
+                             '安装写入和完整读回已完成；待断电加载新功能。按弹窗断开全部供电，取电池至少 1 分钟后重开、接回 USB，点击“继续安装”核对加载，不重复刷写。' if setup_wait else
                              '读写已结束。拔 USB → 等灯停 → 关机并等灯灭 → 取电池至少 1 分钟 → 开机；详见弹窗。') if waiting else
                            '名称与只读挂载已确认；程序尚未安装，请点首页“继续安装”。' if resource_ready and status.get('action')=='setup_all' else
                            '名称与只读挂载已确认；程序尚未安装，请点自定义外观页“继续槽位更改”。' if resource_ready else

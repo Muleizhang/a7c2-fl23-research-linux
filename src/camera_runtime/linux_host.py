@@ -3,6 +3,58 @@ import os
 from pathlib import Path
 import subprocess
 
+USB_RULES = '''# Only the two supported camera USB identities; access for the active local user.
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="054c", ATTR{idProduct}=="0e8a", TAG+="uaccess"
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="054c", ATTR{idProduct}=="0336", TAG+="uaccess"
+'''
+RULE_PATH = Path('/etc/udev/rules.d/70-a7c2-tools.rules')
+
+# Only fixed commands and rule bytes enter the privileged process, never user paths.
+PERMISSION_SETUP = '''set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+umask 022
+mkdir -p /etc/udev/rules.d
+temporary=$(mktemp /etc/udev/rules.d/.a7c2-tools.XXXXXX)
+trap 'rm -f "$temporary"' EXIT
+cat > "$temporary" <<'A7C2_RULES'
+''' + USB_RULES + '''A7C2_RULES
+chmod 0644 "$temporary"
+mv -fT "$temporary" /etc/udev/rules.d/70-a7c2-tools.rules
+udevadm control --reload-rules
+for product in 0e8a 0336; do
+    udevadm trigger --action=change --subsystem-match=usb --attr-match=idVendor=054c --attr-match=idProduct="$product"
+done
+udevadm settle --timeout=10
+'''
+
+
+def ensure_usb_permissions(device):
+    """Prepare both identities before normal-mode I/O; never elevate a camera worker."""
+    camera = camera_path(device)
+    node = Path('/dev/bus/usb') / f'{device.bus:03d}' / f'{device.address:03d}'
+    configured = RULE_PATH.is_file() and RULE_PATH.read_text() == USB_RULES
+    if configured and os.access(node, os.R_OK | os.W_OK):
+        return
+    pkexec = Path('/usr/bin/pkexec')
+    if not pkexec.is_file():
+        raise PermissionError('需要系统 polkit（pkexec）才能自动配置相机 USB 权限；请安装 polkit 后重新运行。尚未进行相机读写。')
+    print('正在配置相机 USB 权限；如出现系统授权窗口，请确认。只配置相机规则，程序仍以普通用户运行。', flush=True)
+    env = {key: value for key, value in os.environ.items()
+           if not key.startswith('LD_') and key not in ('ENV', 'BASH_ENV')}
+    try:
+        result = subprocess.run([str(pkexec), '/bin/sh', '-c', PERMISSION_SETUP],
+                                capture_output=True, text=True, timeout=120, env=env)
+    except subprocess.TimeoutExpired as exc:
+        raise PermissionError('USB 权限配置等待超时，已停止；尚未进行相机读写。请检查系统授权窗口。') from exc
+    if result.returncode:
+        raise PermissionError('相机 USB 权限配置未完成或授权已取消；尚未进行相机读写。系统信息：'
+                              + result.stderr.strip())
+    if camera_path(device) != camera:
+        raise PermissionError('权限配置期间相机连接已改变，请重新连接后继续。')
+    if not os.access(node, os.R_OK | os.W_OK):
+        raise PermissionError('相机规则已配置，但当前会话尚未获得 USB 权限。请在本机桌面会话拔插 USB 后继续；尚未进行相机读写。')
+
 
 def camera_path(device):
     for entry in Path('/sys/bus/usb/devices').iterdir():

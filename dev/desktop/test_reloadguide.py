@@ -60,3 +60,14 @@ def test_setup_reload_names_continue_button():
         assert '继续安装' in message
         assert '继续上次安装' not in message
         assert '接回 USB' in message
+
+
+def test_setup_distinguishes_resource_preparation_from_completed_writes():
+    resource = reloadguide.text(setup=True, mode='resource_reload')
+    final = reloadguide.text(setup=True)
+    assert '主安装程序尚未写入' in resource
+    assert '之前已完成的独立步骤保留' in resource
+    assert '程序写完后还会提示最终重开' in resource
+    assert '安装写入和完整读回已完成' in final
+    assert '不是重复安装' in final
+    assert '不重复刷写' in final
