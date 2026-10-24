@@ -129,6 +129,9 @@ def get_device(pid):
     if backend is None:raise RuntimeError('找不到 libusb 程式庫')
     found=list(usb.core.find(find_all=True,idVendor=0x054c,idProduct=pid,backend=backend))
     if len(found)!=1:raise RuntimeError(f'需要且只能連接一台目標相機（USB {pid:04x}）；請確認大量儲存模式及驅動')
+    if sys.platform=='linux' and pid==0x0e8a:
+        from linux_host import ensure_usb_permissions
+        ensure_usb_permissions(found[0])
     if not list(found[0]):raise RuntimeError('無法讀取 USB 配置')
     return found[0]
 

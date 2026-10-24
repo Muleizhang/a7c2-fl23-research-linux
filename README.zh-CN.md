@@ -5,7 +5,7 @@
 > [!NOTE]
 > 本仓库持续维护 [A7C II Tools](https://github.com/QAQLeonard/a7c2-fl23-research) 的 Linux 适配版本，从 3.0.3 起跟随上游版本行为。目标平台为 Ubuntu 22.04+、Debian 12+、Fedora 43+ 的 x86_64 和 ARM64，提供 deb、rpm、AppImage 三种包。适配范围包括桌面程序和 CLI，原生 Lightroom 宿主集成除外。
 >
-> Linux 适配代码与打包流程已实现，目前仅完成本机 Fedora 44 x86_64 离线检查，上述目标不代表兼容性测试已经完成。本机生成的 `.local` 包要求 glibc 2.43，不是满足最低系统要求的发行包。适配完成后补充 Linux 下载和使用说明。下方现有 Windows/macOS 说明保留作为上游文档，不是 Linux 操作指南。长期维护与验收规范见 [ADAPTATION.md](ADAPTATION.md#简体中文)。
+> Linux 适配代码与打包流程已实现，目前已完成本机 Fedora 44 x86_64 离线检查，以及一次用户确认成功的 AppImage 实机安装和重启加载核对；各项实际效果仍需分别验收，上述目标不代表兼容性测试已经完成。本机生成的 `.local` 包要求 glibc 2.43，不是满足最低系统要求的发行包。适配完成后补充 Linux 下载和使用说明。下方现有 Windows/macOS 说明保留作为上游文档，不是 Linux 操作指南。长期维护与验收规范见 [ADAPTATION.md](ADAPTATION.md#简体中文)。
 
 > [!WARNING]
 >

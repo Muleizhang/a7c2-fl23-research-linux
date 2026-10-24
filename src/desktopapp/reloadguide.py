@@ -72,7 +72,7 @@ def text(*, setup=False, mode=None):
                 '只有核对通过才显示恢复完成。核对失败时保留日志，不要把写入结束当成恢复完成。'
                 '弹窗“确定”只关闭说明，不会自动完成核对。')
     if mode=='resource_reload':
-        return ('名称阶段已完成，程序尚未写入。旧资源仍被相机占用，只读挂载尚未恢复；需要先释放旧资源，再继续剩余安装。\n\n'+STEPS+
+        return ('名称资源准备完成，接下来需断电释放旧资源，再继续安装。主安装程序尚未写入；之前已完成的独立步骤保留。旧资源仍被相机占用，只读挂载尚未恢复。\n\n'+STEPS+
             '\n\n开机后先不用拍照。接回 USB 海量存储，再点'+('首页“继续安装”' if setup else '自定义外观页“继续槽位更改”')+
             '。工具会核对新的冷启动和只读挂载，然后继续剩余程序，不重复写名称、不重装驱动。\n\n程序写完后还会提示最终重开，让新功能生效。点确定只关闭说明。')
     reason = ('\n\n这次“启用 FL2／FL3”已写入程序文件。此前恢复原厂后的重开只加载了原厂状态；本次新的修改需要再次重开才能生效。'
@@ -92,4 +92,5 @@ def text(*, setup=False, mode=None):
               if mode in ('install_all','look_import','slot_default') else
               '确认能正常取景，检查菜单／外观预览，并拍照、回放。若本页显示待核对，请接回 USB 后点击该页明确列出的核对按钮。')
     check_note='加载核对只读取状态，不会再刷一次。' if setup or (mode and mode.startswith('sound_')) else ''
-    return STEPS + reason + '\n\n下一步：' + follow + '\n\n' + check_note + '点“确定”只关闭说明，不会自动断电或代替你确认测试。'
+    stage = ('安装写入和完整读回已完成，现在需断电加载新功能。若刚做过资源阶段重启，这是后续安装完成后的加载步骤，不是重复安装。\n\n' if setup else '')
+    return stage + STEPS + reason + '\n\n下一步：' + follow + '\n\n' + check_note + '点“确定”只关闭说明，不会自动断电或代替你确认测试。'

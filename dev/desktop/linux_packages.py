@@ -99,7 +99,7 @@ def build(output, *, appimagetool='appimagetool', revision='1', local=False):
             f'Depends: libc6 (>= {glibc_version}), libgl1, libegl1, libxkbcommon0, libxkbcommon-x11-0, '
             'libxcb1, libxcb-cursor0, libxcb-icccm4, libxcb-keysyms1, libxcb-image0, '
             'libxcb-render-util0, libxcb-xinerama0, libxcb-randr0, libxcb-shape0, '
-            'libxcb-xfixes0, libfontconfig1, libdbus-1-3, udisks2, perl\n'
+            'libxcb-xfixes0, libfontconfig1, libdbus-1-3, udisks2, policykit-1, perl\n'
             'Description: Sony A7C II desktop and command-line tools\n'
             ' Linux adaptation for ILCE-7CM2 firmware 2.01.\n')
         deb = output / f'A7C2Tools-{version}-{revision}-Linux-{deb_arch}.deb'
@@ -111,13 +111,13 @@ def build(output, *, appimagetool='appimagetool', revision='1', local=False):
 Version: {version}
 Release: {revision}
 Summary: Sony A7C II desktop and command-line tools
-License: MIT
+License: PolyForm-Noncommercial-1.0.0 AND MIT
 URL: https://github.com/QAQLeonard/a7c2-fl23-research
 BuildArch: {rpm_arch}
 AutoReqProv: no
 Requires: glibc >= {glibc_version}, libglvnd-glx, libglvnd-egl, libxkbcommon, libxkbcommon-x11
 Requires: libxcb, xcb-util-cursor, xcb-util-wm, xcb-util-keysyms, xcb-util-image, xcb-util-renderutil
-Requires: fontconfig, dbus-libs, udisks2, perl
+Requires: fontconfig, dbus-libs, udisks2, polkit, perl
 %description
 Linux adaptation for ILCE-7CM2 firmware 2.01, including desktop and CLI.
 %prep

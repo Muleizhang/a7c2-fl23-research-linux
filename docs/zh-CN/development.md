@@ -144,7 +144,7 @@ python3.11 -m venv .venv
 
 包包含桌面入口、`A7C2Tools` 和原有 CLI，通过 `A7C2Tools --cli TOOL ...` 调用。工具名为 `fl23`、`lut`、`recovery`、`shutter`、`vertical`、`a7look_compile`、`a7look_write`、`raw_auto`、`raw_import`；源码对应 `.venv/bin/python desktop.py --cli TOOL ...`。保留原有参数和旧 CLI 安全合同。打包后的 FL23 CLI 把工作目录及备份放在用户数据目录，不写入只读应用目录。
 
-Linux 数据默认位于 `${XDG_DATA_HOME:-~/.local/share}/a7c2-tools`，仍支持 `A7C2_DESKTOP_DATA` 覆盖。启动错误写入 `${XDG_STATE_HOME:-~/.local/state}/a7c2-tools`。USB 规则在 deb/rpm 包的 `/usr/share/a7c2-tools/70-a7c2-tools.rules`，以及 AppImage 内的 `usr/share/a7c2-tools/` 下提供。不自动安装或启用规则；用户需要将其安装到系统 udev 规则目录并重新加载规则，再连接相机。规则只授权当前本地登录会话，且仅匹配两个支持的相机身份。卸载包不删除用户数据。
+Linux 数据默认位于 `${XDG_DATA_HOME:-~/.local/share}/a7c2-tools`，仍支持 `A7C2_DESKTOP_DATA` 覆盖。启动错误写入 `${XDG_STATE_HOME:-~/.local/state}/a7c2-tools`。USB 规则在 deb/rpm 包的 `/usr/share/a7c2-tools/70-a7c2-tools.rules`，以及 AppImage 内的 `usr/share/a7c2-tools/` 下提供。显式操作相机时，在读取正常 USB 描述符前按需通过系统 polkit 授权窗口自动安装固定规则、重新加载，并只触发两个相机身份的规则。已有匹配规则且权限可用时跳过授权；相机进程仍以普通用户运行。启动和离线命令不执行配置；取消授权、超时或权限仍不可用时，在相机读写前停止。AppImage 需要系统 polkit/pkexec 和可用授权代理，原生包声明 polkit 依赖。提权助手不接受用户路径或相机命令。规则只授权当前本地登录会话，且仅匹配两个支持的相机身份。卸载包不删除用户数据。
 
 本地离线 Qt 测试和成品 `--smoke-test` 使用 `QT_QPA_PLATFORM=offscreen`。不接相机运行 `--offline-self-test OUTPUT.json`、全部成品 CLI 的 `--help`、`--cli lut doctor --device`、`--cli shutter doctor` 及 `--cli fl23 check-package`。旧测试集分别执行，避免重复测试模块名冲突。解包运行不能证明系统安装、Wayland/X11 交互、旧发行版兼容性或真实 USB 行为；这些证据单独写入 changelog。
 
