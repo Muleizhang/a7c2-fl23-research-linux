@@ -14,6 +14,7 @@ for slot in range(1, 7):
 datas, binaries, hidden = [], [], ['PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
                                  'tarfile', 'lzma', 'bz2', 'zlib', 'urllib.request', 'wave', 'plistlib', 'backports.tarfile', 'zipfile', 'filecmp']
 if sys.platform=='darwin':hidden.append('pwd')
+if sys.platform=='linux':hidden.extend(['fcntl', 'pwd'])
 for package in ('numpy', 'scipy', 'PIL', 'tifffile', 'yaml', 'elftools', 'usb',
                 'libusb_package', 'Cryptodome', 'imageio_ffmpeg', 'ziglang', 'keystone', 'capstone', 'unicorn'):
     d, b, h = collect_all(package)
@@ -23,14 +24,14 @@ for package in ('numpy', 'scipy', 'PIL', 'tifffile', 'yaml', 'elftools', 'usb',
 
 # Source keeps original __file__-relative native headers and asset paths.
 for folder in ('src/desktopapp', 'src/camera_runtime', 'src/looks/looktool',
-               'src/looks/assets', 'src/looks/native', 'src/fl23/native', 'src/fl23/assets',
+               'src/looks/assets', 'src/looks/native', 'src/fl23/native', 'src/fl23/assets', 'src/fl23/licenses',
                'src/vertical', 'src/shutter_sound', 'plugins', 'desktop-assets'):
     for source in (root / folder).rglob('*'):
         relative = source.relative_to(root)
         if relative.parts[:2]==('desktop-assets','profile-library-v1'):continue
         if not source.is_file() or any(p in ('__pycache__', 'tests') for p in relative.parts):
             continue
-        if sys.platform == 'darwin' and (relative.parts[:2] == ('desktop-assets', 'windows') or source.suffix.lower() in ('.exe', '.dll', '.pyd', '.bat', '.cmd')):
+        if sys.platform != 'win32' and (relative.parts[:2] == ('desktop-assets', 'windows') or source.suffix.lower() in ('.exe', '.dll', '.pyd', '.bat', '.cmd')):
             continue
         if source.suffix.lower()=='.dcp' and relative.parts[:2]!=('desktop-assets','profile-library-v1'):
             continue
@@ -39,6 +40,14 @@ for folder in ('src/desktopapp', 'src/camera_runtime', 'src/looks/looktool',
         datas.append((str(source), str(relative.parent)))
 for relative,source in profile_files().items():
     datas.append((str(source),str(Path('desktop-assets/profile-library-v1')/Path(relative).parent)))
+if sys.platform == 'linux':
+    for source in (root/'src/fl23').glob('*.py'):
+        if source.name != 'gui.py':
+            datas.append((str(source), 'src/fl23'))
+    for name in ('lut', 'recovery', 'shutter', 'vertical', 'a7look_compile', 'a7look_write', 'raw_auto', 'raw_import'):
+        datas.append((str(root/(name+'.py')), '.'))
+    datas.append((str(root/'dev/desktop/linux/70-a7c2-tools.rules'), '.'))
+
 for name in ('desktop.py', 'LICENSE', 'README.md', 'README.zh-CN.md', 'desktop-requirements.txt',
              'dev/desktop/offline_smoke.py', 'docs/en/lut-formats.md', 'docs/zh-CN/lut-formats.md',
              'docs/en/notices.md', 'docs/zh-CN/notices.md', 'docs/licenses/a7c2-fl23-macos-MIT.txt',

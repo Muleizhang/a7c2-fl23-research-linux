@@ -59,6 +59,9 @@ def scan():
     if sys.platform == 'darwin':
         report['driver_required'] = False
         report['note'] = 'macOS uses bundled libusb. Close Photos/Image Capture and unmount only camera storage volumes before service access.'
+    if sys.platform == 'linux':
+        report['driver_required'] = False
+        report['note'] = 'Linux 使用 libusb；请安装随包提供的 70-a7c2-tools.rules 后重新连接。关闭占用相机存储的文件管理器或照片程序；服务连接只卸载已确认属于相机的存储卷。'
     return report
 
 
@@ -175,7 +178,7 @@ def elevated_result(folder, code):
 
 
 def install(arguments, job, *, report=None):
-    if sys.platform == 'darwin':
+    if sys.platform in ('darwin', 'linux'):
         return scan()
     if sys.platform != 'win32':
         raise ValueError('Automatic driver installation is supported on Windows only')

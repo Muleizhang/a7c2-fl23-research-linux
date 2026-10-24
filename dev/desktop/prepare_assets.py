@@ -28,7 +28,7 @@ def fetch(url):
 
 
 PRESET_NAMES = tuple('slot%d.a7look' % slot for slot in range(1,7)) + (
-    'credits.json','NOTICE.txt','CC-BY-NC-SA-4.0.txt')
+    'credits.json','NOTICE.txt')
 
 
 def import_presets(archive, root=ROOT):
@@ -72,7 +72,13 @@ def main():
     args = parser.parse_args()
     if not args.presets_url and not args.preset_archive:
         request_file=ROOT/'dev/desktop/native-build-request.json'
-        if request_file.is_file() and not all((ROOT/'desktop-assets/presets/default-six-v1'/('slot%d.a7look'%slot)).is_file() for slot in range(1,7)):args.presets_url=__import__('json').loads(request_file.read_text(encoding='utf-8'))['preset_archive_url']
+        if sys.platform != 'linux' and request_file.is_file() and not all((ROOT/'desktop-assets/presets/default-six-v1'/('slot%d.a7look'%slot)).is_file() for slot in range(1,7)):args.presets_url=__import__('json').loads(request_file.read_text(encoding='utf-8'))['preset_archive_url']
+    if (sys.platform == 'linux' and not args.preset_archive and not args.presets_url
+            and not all((ROOT/'desktop-assets/presets/default-six-v1'/name).is_file() for name in PRESET_NAMES)):
+        version = {}
+        exec((ROOT/'src/desktopapp/__init__.py').read_text(encoding='utf-8'), version)
+        args.presets_url = ('https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v'
+                            + version['VERSION'] + '/A7C2Tools-Windows-x64.zip')
     if args.export_presets:
         print(export_presets(args.export_presets));return
     if args.preset_archive:import_presets(args.preset_archive)

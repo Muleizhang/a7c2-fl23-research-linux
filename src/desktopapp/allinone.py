@@ -4,6 +4,7 @@ All device work goes through existing explicit worker actions. A failed or
 unknown installation is never replayed. Physical power removal remains manual.
 """
 import json
+import sys
 import uuid
 from pathlib import Path
 from .paths import data_root, write_json
@@ -25,6 +26,9 @@ def run(arguments, *, dispatch):
         if archive_error(state):write_json(path,state)
         print('本次一键安装已结束，没有重复写入。', flush=True)
         return state
+    selected = state['options'] if state else arguments.get('options', {})
+    if sys.platform == 'linux' and selected.get('plugin'):
+        raise ValueError('Linux 没有原生 Lightroom Classic；请取消插件选项。已有事务不能静默改变计划。')
     if state is None:
         from .presets import resolve
         inputs = root / 'inputs'

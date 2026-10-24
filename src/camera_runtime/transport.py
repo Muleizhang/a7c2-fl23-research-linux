@@ -106,7 +106,11 @@ class SonySenserDevice(PmcaSenserDevice):
 
 class Bounded(UsbBackend):
     def __init__(self,device,budget=180):
-        super().__init__(device);self.budget=budget;self.reset()
+        super().__init__(device)
+        if sys.platform == 'linux':
+            from linux_host import claim_camera_interface
+            claim_camera_interface(device)
+        self.budget=budget;self.reset()
     def reset(self):self.deadline=time.monotonic()+self.budget
     def timeout(self,t=None):
         left=int((self.deadline-time.monotonic())*1000)
@@ -149,6 +153,9 @@ class _InitialProgress:
 class _InitialBackend(Bounded):
     def __init__(self,device,report):
         UsbBackend.__init__(self,device)
+        if sys.platform == 'linux':
+            from linux_host import claim_camera_interface
+            claim_camera_interface(device)
         self.budget=60
         self.deadline=time.monotonic()+self.budget
     def reset(self):

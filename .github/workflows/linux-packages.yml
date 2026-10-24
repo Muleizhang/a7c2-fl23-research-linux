@@ -1,0 +1,78 @@
+name: Linux packages
+on:
+  workflow_dispatch:
+    inputs:
+      preset_archive_url:
+        description: 'Optional official Windows ZIP or exported preset/profile archive URL'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    # Both architectures build against the oldest supported glibc, not the host runner.
+    container: ubuntu:22.04
+    timeout-minutes: 90
+    env:
+      QT_QPA_PLATFORM: offscreen
+      A7C2_PRESET_ARCHIVE_URL: ${{ inputs.preset_archive_url }}
+    steps:
+      - name: Build dependencies inside the disposable container
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl git build-essential dpkg-dev rpm file zstd \
+            libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 \
+            libxcb-image0 libxcb-render-util0 libxcb-xinerama0 libfontconfig1 libdbus-1-3 perl
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Project environment
+        run: |
+          uv python install 3.11
+          uv venv --python 3.11 .venv
+          uv pip install setuptools==80.9.0 setuptools-scm==8.3.1 wheel==0.45.1 cmake==3.31.6
+          uv pip install --no-build-isolation -r dev/desktop/build-requirements.txt
+      - name: Native libraries and offline tests
+        run: |
+          .venv/bin/python -c "import keystone, unicorn; assert keystone.Ks(keystone.KS_ARCH_ARM64, keystone.KS_MODE_LITTLE_ENDIAN).asm('ret')[0]; unicorn.Uc(unicorn.UC_ARCH_ARM64, unicorn.UC_MODE_ARM)"
+          .venv/bin/python -m pytest dev/desktop dev/shutter_sound/tests dev/vertical -q
+      - name: Distribution resources and packaging tool
+        run: |
+          .venv/bin/python dev/desktop/prepare_assets.py
+          mkdir -p build/linux-tools
+          curl -fL --retry 3 https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${{ matrix.arch }}.AppImage -o build/linux-tools/appimagetool
+          chmod +x build/linux-tools/appimagetool
+          sha256sum build/linux-tools/appimagetool > build/appimagetool.sha256
+      - name: Build packages
+        run: .venv/bin/python dev/desktop/build.py --appimagetool "$PWD/build/linux-tools/appimagetool"
+      - name: Frozen runtime, CLI and GUI checks (no USB)
+        run: |
+          export A7C2_DESKTOP_DATA="$PWD/build/linux-smoke"
+          dist/A7C2Tools/A7C2Tools --offline-self-test "$PWD/dist/linux-self-test.json"
+          dist/A7C2Tools/A7C2Tools --smoke-test
+          for tool in fl23 lut recovery shutter vertical a7look_compile a7look_write raw_auto raw_import; do
+            dist/A7C2Tools/A7C2Tools --cli "$tool" --help
+          done
+          dist/A7C2Tools/A7C2Tools --cli lut doctor --device
+          APPIMAGE_EXTRACT_AND_RUN=1 dist/*.AppImage --cli lut doctor --device
+      - uses: actions/upload-artifact@v4
+        with:
+          name: A7C2Tools-Linux-${{ matrix.arch }}
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.AppImage
+            dist/*.sha256
+            dist/linux-self-test.json
+            build/appimagetool.sha256
+          if-no-files-found: error

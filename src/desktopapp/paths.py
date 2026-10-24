@@ -14,7 +14,7 @@ def data_root():
         return Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'A7C2Tools'
     if sys.platform == 'darwin':
         return Path.home() / 'Library/Application Support/A7C2Tools'
-    return Path.home() / '.local/share/a7c2-tools'
+    return Path(os.environ.get('XDG_DATA_HOME') or Path.home() / '.local/share') / 'a7c2-tools'
 
 
 def write_json(path, value):

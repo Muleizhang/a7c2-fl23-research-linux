@@ -2,6 +2,11 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
+> [!NOTE]
+> This repository maintains the Linux adaptation of [A7C II Tools](https://github.com/QAQLeonard/a7c2-fl23-research), tracking upstream behavior from version 3.0.3 onward. The target platforms are x86_64 and ARM64 on Ubuntu 22.04+, Debian 12+ and Fedora 43+, with deb, rpm and AppImage packages. The adaptation covers the desktop app and CLI, except native Lightroom host integration.
+>
+> Linux adaptation code and packaging are implemented; validation currently covers local Fedora 44 x86_64 offline checks only. These targets are not a claim of completed compatibility testing. Locally built `.local` packages require glibc 2.43 and are not releases for the minimum supported systems. Linux download and usage instructions will be added when the adaptation is ready. The existing Windows/macOS instructions below are retained as upstream documentation, not Linux instructions. See [ADAPTATION.md](ADAPTATION.md#english) for the ongoing maintenance and acceptance policy.
+
 > [!WARNING]
 >
 > ### Read before use · Disclaimer

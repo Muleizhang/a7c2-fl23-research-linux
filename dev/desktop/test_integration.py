@@ -138,7 +138,7 @@ class IntegrationTests(unittest.TestCase):
     def test_unknown_sony_pid_is_reported_without_driver_replacement(self):
         row={'id':r'USB\VID_054C&PID_0D68\private-instance','name':'USB Input Device',
              'description':'Unknown Sony interface','status':'OK','service':'HidUsb'}
-        with patch.object(drivers,'scan',return_value={'devices':[row],'errors':[]}), \
+        with patch.object(sys, 'platform', 'win32'), patch.object(drivers,'scan',return_value={'devices':[row],'errors':[]}), \
              patch.object(drivers,'installer') as installer:
             with self.assertRaisesRegex(RuntimeError,'PID_0D68'):
                 drivers.install({'pid':'0e8a'},self.root)
@@ -150,7 +150,7 @@ class IntegrationTests(unittest.TestCase):
         from desktopapp import plugins
         tool=self.root/'tools/exiftool.exe'; tool.parent.mkdir();tool.write_bytes(b'test-exiftool')
         adobe=self.root/'temporary-appdata'
-        with patch.dict(os.environ,{'APPDATA':str(adobe)}), patch.object(plugins.sys,'frozen',True,create=True):
+        with patch.object(sys, 'platform', 'win32'), patch.dict(os.environ,{'APPDATA':str(adobe)}), patch.object(plugins.sys,'frozen',True,create=True):
             result=plugins.install({'exiftool':str(tool),'data_root':str(self.root/'profile-data')})
         plugin=Path(result['plugin'])
         self.assertTrue((plugin/'Info.lua').is_file())

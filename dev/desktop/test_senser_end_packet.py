@@ -157,3 +157,9 @@ def test_empty_transfers_still_obey_the_existing_backend_deadline(monkeypatch):
     channel=transport.SonySenserDevice(Driver())
     with pytest.raises(TimeoutError):channel.sendSenserPacket(0x40,b'request')
     assert clock[0]==1.0 and channel._failed
+
+
+@pytest.fixture(autouse=True)
+def simulated_host_claim(monkeypatch):
+    import linux_host
+    monkeypatch.setattr(linux_host, "claim_camera_interface", lambda device: None)

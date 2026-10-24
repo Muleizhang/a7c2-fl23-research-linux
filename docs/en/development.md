@@ -8,6 +8,7 @@ One overview for maintainers and AI agents. Read [AGENTS.md](../../AGENTS.md) fi
 
 - Camera: Sony ILCE-7CM2, firmware 2.01 only.
 - Product: the 3.0 desktop app (`desktop.py`), on Windows 10/11 x64 and macOS 14+ Apple Silicon. Windows and macOS share the GUI, planners, camera writes and recovery. Only USB drivers, privilege elevation and media handling differ per host.
+- Linux adaptation targets x86_64 and ARM64 on Ubuntu 22.04+, Debian 12+ and Fedora 43+; see [Linux builds](#linux-builds) and the changelog for actual validation coverage.
 - Legacy command-line tools (`FL23.cmd`, `lut.py`, `recovery.py`, `shutter.py`, `vertical.py`, `a7look_*.py`, `raw_*.py`) remain for advanced use. Their backup-based workflows are separate from the desktop's backup-free direct operations.
 
 ## Repository map
@@ -122,6 +123,30 @@ Outputs:
 CI: `.github/workflows/desktop-preview.yml` builds on native Windows and `macos-15` runners and uploads artifacts without publishing a Release. Updating `dev/desktop/native-build-request.json` triggers an Apple Silicon build. Keystone/Unicorn build from source on ARM64 (Xcode CLT, CMake 3.31.6); Zig is 0.13.0.
 
 Packages have no Developer ID signature. Offline tests, packaged self-tests and byte readback do not prove camera boot safety, colors or sound. Physical acceptance is recorded separately in the [changelog](changelog.md).
+
+## Linux builds
+
+The ongoing policy is [ADAPTATION.md](../../ADAPTATION.md#english). Linux uses the shared desktop and CLI engines. Native Lightroom host integration, including `raw_auto install`, is unavailable; offline Look conversion and profile processing remain available. Linux-specific USB ownership lives in `src/camera_runtime/linux_host.py`: confirm the sysfs identity, unmount only camera-backed storage through `udisksctl`, verify it is unmounted, then claim the interface. No automatic sudo or system driver installation is performed. Explicit desktop USB scans provide permission guidance.
+
+Use a project-local Python 3.11 `.venv`. Build each architecture natively; PyInstaller does not cross-compile the host application. The manual `linux-packages.yml` workflow builds x86_64 and ARM64 in Ubuntu 22.04 containers and uploads artifacts without publishing a release. This workflow is a build configuration, not evidence that both architectures have passed. QEMU environments and their scripts remain outside the repository.
+
+```sh
+python3.11 -m venv .venv
+.venv/bin/python -m pip install setuptools==80.9.0 setuptools-scm==8.3.1 wheel==0.45.1 cmake==3.31.6
+.venv/bin/python -m pip install --no-build-isolation -r dev/desktop/build-requirements.txt
+.venv/bin/python dev/desktop/prepare_assets.py
+.venv/bin/python dev/desktop/build.py --appimagetool /absolute/path/to/native/appimagetool
+```
+
+Build prerequisites include a C/C++ toolchain, `dpkg-deb`, `rpmbuild`, native `appimagetool` and the Qt system libraries listed in the workflow. Obtain appimagetool from its official repository; retain its checksum with build evidence. AppImage tooling may download its architecture-specific runtime. ExifTool is bundled as Perl source and requires system Perl; storage unmounting requires UDisks2. ARM64 uses PySide6 6.7.3 because the upstream 6.8.3 ARM64 wheel requires glibc 2.39; x86_64, Windows and macOS retain 6.8.3.
+
+Release builds must keep the Ubuntu 22.04 glibc 2.35 baseline. Packaging scans ELF version requirements and rejects newer bundled dependencies by default. For local development on newer distributions, `--local-linux-build` produces explicitly marked `.local` packages and records actual minimum glibc in package dependencies and `BUILD-INFO.json`; these are not baseline-compatible releases. `--package-revision` distinguishes packaging revisions without changing the upstream application version. Outputs are deb, rpm, AppImage and a SHA-256 list for the native architecture.
+
+Packages include a desktop launcher, `A7C2Tools`, and the existing CLIs via `A7C2Tools --cli TOOL ...`. Tools: `fl23`, `lut`, `recovery`, `shutter`, `vertical`, `a7look_compile`, `a7look_write`, `raw_auto`, `raw_import`. Source runs use `.venv/bin/python desktop.py --cli TOOL ...`. Arguments and legacy safety contracts are retained. The packaged FL23 CLI stores its work and backups under the user data root rather than the read-only application directory.
+
+Linux data defaults to `${XDG_DATA_HOME:-~/.local/share}/a7c2-tools`; `A7C2_DESKTOP_DATA` still overrides it. Startup errors go to `${XDG_STATE_HOME:-~/.local/state}/a7c2-tools`. The USB rule is shipped at `/usr/share/a7c2-tools/70-a7c2-tools.rules` in deb/rpm packages and inside the AppImage's `usr/share/a7c2-tools/` directory. It is not installed or activated automatically: the user must install it in the system udev rules directory and reload rules before reconnecting. It grants access only to the active local session and only to the two supported camera identities. No package removal script deletes user data.
+
+Local offline checks use `QT_QPA_PLATFORM=offscreen` for Qt tests and packaged `--smoke-test`. Run `--offline-self-test OUTPUT.json`, all packaged CLI `--help` entries, `--cli lut doctor --device`, `--cli shutter doctor`, and `--cli fl23 check-package` without a camera. Run the legacy test suites separately to avoid their duplicate test-module names. Package extraction and execution do not prove system installation, Wayland/X11 interaction, older-distribution compatibility or physical USB behavior. Record those separately in the changelog.
 
 ## Documentation policy
 

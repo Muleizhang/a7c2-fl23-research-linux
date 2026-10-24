@@ -8,6 +8,7 @@
 
 - 相机：只支持 Sony ILCE-7CM2、固件 2.01。
 - 产品：3.0 桌面程序（`desktop.py`），支持 Windows 10／11 x64 和 macOS 14+ Apple Silicon。两个平台共用界面、规划、相机写入和恢复；只有 USB 驱动、提权和存储卷处理因系统而异。
+- Linux 适配目标为 Ubuntu 22.04+、Debian 12+、Fedora 43+ 的 x86_64 和 ARM64；实际验证范围见 [Linux 构建](#linux-构建)及更新日志。
 - 旧版命令行工具（`FL23.cmd`、`lut.py`、`recovery.py`、`shutter.py`、`vertical.py`、`a7look_*.py`、`raw_*.py`）保留给高级用户。它们基于备份的流程，与桌面版不需要备份的直接操作相互独立。
 
 ## 目录
@@ -122,6 +123,30 @@ python desktop.py
 CI：`.github/workflows/desktop-preview.yml` 在原生 Windows 和 `macos-15` runner 上构建并上传产物，不发布 Release。修改 `dev/desktop/native-build-request.json` 会触发 Apple Silicon 构建。ARM64 上 Keystone／Unicorn 从源码编译（需要 Xcode 命令行工具和 CMake 3.31.6）；Zig 版本为 0.13.0。
 
 安装包没有 Developer ID 签名。离线测试、打包自检和字节读回都不能证明相机能安全启动，也不能证明颜色或声音正确。实机验收单独记录在[更新日志](changelog.md)中。
+
+## Linux 构建
+
+长期规范见 [ADAPTATION.md](../../ADAPTATION.md#简体中文)。Linux 复用桌面和 CLI 引擎。原生 Lightroom 宿主集成（包括 `raw_auto install`）不可用，离线外观转换和配置文件处理仍可使用。Linux USB 接管在 `src/camera_runtime/linux_host.py` 中实现：核对 sysfs 身份，通过 `udisksctl` 只卸载属于相机的存储卷，确认已卸载后才占用接口。不自动运行 sudo 或安装系统驱动；桌面的显式 USB 检查会提示权限要求。
+
+使用项目内 Python 3.11 `.venv`，每个架构原生构建；PyInstaller 不能交叉编译电脑端应用。手动触发的 `linux-packages.yml` 工作流在 Ubuntu 22.04 容器内构建 x86_64 和 ARM64，只上传产物，不发布 Release。工作流配置不等于两个架构已经验证通过。QEMU 环境及脚本保留在仓库外。
+
+```sh
+python3.11 -m venv .venv
+.venv/bin/python -m pip install setuptools==80.9.0 setuptools-scm==8.3.1 wheel==0.45.1 cmake==3.31.6
+.venv/bin/python -m pip install --no-build-isolation -r dev/desktop/build-requirements.txt
+.venv/bin/python dev/desktop/prepare_assets.py
+.venv/bin/python dev/desktop/build.py --appimagetool /absolute/path/to/native/appimagetool
+```
+
+构建依赖包括 C/C++ 工具链、`dpkg-deb`、`rpmbuild`、对应架构的 `appimagetool` 及工作流列出的 Qt 系统库。从官方仓库获取 appimagetool，并随构建证据保留其校验和；AppImage 工具可能下载对应架构的运行时。ExifTool 以 Perl 源码随包提供，需要系统 Perl；卸载存储卷需要 UDisks2。ARM64 使用 PySide6 6.7.3，因为原有 6.8.3 的 ARM64 wheel 要求 glibc 2.39；x86_64、Windows 和 macOS 仍使用 6.8.3。
+
+发行构建必须保持 Ubuntu 22.04 的 glibc 2.35 基线。打包会扫描 ELF 版本依赖，默认拒绝需要更高 glibc 的捆绑库。在较新发行版上进行本地开发时，`--local-linux-build` 生成明确标记 `.local` 的测试包，在包依赖与 `BUILD-INFO.json` 中记录实际最低 glibc；这些产物不是满足最低系统基线的发行包。`--package-revision` 用于区分打包修订，不修改上游应用版本。每次输出本机架构的 deb、rpm、AppImage 及 SHA-256 清单。
+
+包包含桌面入口、`A7C2Tools` 和原有 CLI，通过 `A7C2Tools --cli TOOL ...` 调用。工具名为 `fl23`、`lut`、`recovery`、`shutter`、`vertical`、`a7look_compile`、`a7look_write`、`raw_auto`、`raw_import`；源码对应 `.venv/bin/python desktop.py --cli TOOL ...`。保留原有参数和旧 CLI 安全合同。打包后的 FL23 CLI 把工作目录及备份放在用户数据目录，不写入只读应用目录。
+
+Linux 数据默认位于 `${XDG_DATA_HOME:-~/.local/share}/a7c2-tools`，仍支持 `A7C2_DESKTOP_DATA` 覆盖。启动错误写入 `${XDG_STATE_HOME:-~/.local/state}/a7c2-tools`。USB 规则在 deb/rpm 包的 `/usr/share/a7c2-tools/70-a7c2-tools.rules`，以及 AppImage 内的 `usr/share/a7c2-tools/` 下提供。不自动安装或启用规则；用户需要将其安装到系统 udev 规则目录并重新加载规则，再连接相机。规则只授权当前本地登录会话，且仅匹配两个支持的相机身份。卸载包不删除用户数据。
+
+本地离线 Qt 测试和成品 `--smoke-test` 使用 `QT_QPA_PLATFORM=offscreen`。不接相机运行 `--offline-self-test OUTPUT.json`、全部成品 CLI 的 `--help`、`--cli lut doctor --device`、`--cli shutter doctor` 及 `--cli fl23 check-package`。旧测试集分别执行，避免重复测试模块名冲突。解包运行不能证明系统安装、Wayland/X11 交互、旧发行版兼容性或真实 USB 行为；这些证据单独写入 changelog。
 
 ## 文档规则
 

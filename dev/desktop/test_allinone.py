@@ -335,3 +335,10 @@ def test_helper_download_failure_does_not_open_camera(tmp_path,monkeypatch):
             allinone.run(dict(workspace=str(tmp_path/'work'),firmware='2.01',power_confirmed=True,
                 options=dict(plugin=True,looks=[])),dispatch=dispatch)
     dispatch.assert_not_called()
+
+
+import pytest
+
+@pytest.fixture(autouse=True)
+def lightroom_supported_host(monkeypatch):
+    monkeypatch.setattr(allinone.sys, "platform", "darwin")

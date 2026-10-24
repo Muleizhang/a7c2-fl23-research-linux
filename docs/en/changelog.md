@@ -2,6 +2,15 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/changelog.md)
 
+## Linux adaptation of 3.0.3 — not published — 2026-10-25
+
+- Reuse the current desktop and CLI engines on Linux. Add scoped udev rules, sysfs-bound camera-volume unmounting and interface ownership, XDG data paths, a packaged CLI dispatcher, and explicit rejection of native Lightroom host installation. Existing offline conversion remains available. Camera write/recovery algorithms and Windows/macOS contracts are unchanged.
+- Add native x86_64/ARM64 deb, rpm and AppImage packaging and a manual build workflow using Ubuntu 22.04 containers. Preserve user data on package removal. ELF dependency checks reject a raised glibc baseline; `.local` builds record their actual requirements. Linux ARM64 uses PySide6 6.7.3 because the 6.8.3 ARM64 wheel requires glibc 2.39. Correct preset import to match the official MIT-licensed 3.0.3 resource pack.
+- Local Fedora 44 x86_64 offline checks: desktop/sound/vertical suite 779 passed, 28 skipped; Look suite 215 passed, 51 skipped; legacy FL23 84 passed; camera runtime 24 passed, 6 skipped; USB/launcher 39 passed, 7 skipped. Skips are not passes. Packaged offline self-test passed, including resources, native cross-compilation, audio and DCP conversion; seven GUI pages rendered offscreen and on the local Wayland desktop. The X11/XWayland launch attempt was blocked by display authorization, so X11 is not validated. All nine packaged CLI help entries and LUT/sound doctor plus FL23 package checks passed outside the source directory.
+- Local deb/rpm/AppImage extraction checks passed: all nine CLI help entries, offline doctors/package checks and offscreen GUI startup ran outside the source tree. Critical payload files matched the final source; no package installation/removal scripts were present, and all three artifact SHA-256 checks passed. An additional glibc RELR ABI guard regression passed.
+- No QEMU, ARM64 execution, supported-distribution matrix, native Windows/macOS regression, system package installation/upgrade/uninstallation, interactive GUI acceptance or physical camera tests were performed. Local artifacts require glibc 2.43 and are not baseline-compatible releases. The ARM64 workflow is configured but has not been executed. No stability or camera-output claim follows from these offline results.
+
+
 ## Standard license update — 2026-10-25
 
 - Use the unmodified public PolyForm Noncommercial License 1.0.0, replacing the previous MIT/Commons Clause combination and custom preamble. README and startup notice prominently state the commercial-use/profit prohibition, separately from the false-authorization heading. Third-party and previous licenses are retained.

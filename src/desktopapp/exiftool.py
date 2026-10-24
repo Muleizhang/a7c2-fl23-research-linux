@@ -23,6 +23,8 @@ def executable(folder,platform=None):
 def download(platform):
     name=('exiftool-'+VERSION+'_64.zip' if platform=='win32' else 'Image-ExifTool-'+VERSION+'.tar.gz')
     urls=['https://downloads.sourceforge.net/project/exiftool/'+name,'https://exiftool.org/'+name]
+    if platform == 'linux':
+        urls.insert(0, 'https://codeload.github.com/exiftool/exiftool/tar.gz/refs/tags/' + VERSION)
     errors=[]
     for url in urls:
         print('下载官方 ExifTool：'+url,flush=True)
